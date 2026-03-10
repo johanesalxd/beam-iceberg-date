@@ -2,3 +2,7 @@
 __pycache__/
 *.pyc
 .python-version
+artifacts/runs/
+tmp_smoke/
+tmp_smoke_j21/
+tmp_pyiceberg_sql/

@@ -1,0 +1,281 @@
+{
+  "create_results": [
+    {
+      "mode": "create",
+      "variant": "custom_int64",
+      "table": "datecheck.create_custom_int64_d6aa42c9",
+      "ok": true,
+      "inspection": {
+        "table_dir": "/Users/johanesalxd/Developer/git/beam-iceberg-date/artifacts/warehouse/datecheck/create_custom_int64_d6aa42c9",
+        "metadata_json": "/Users/johanesalxd/Developer/git/beam-iceberg-date/artifacts/warehouse/datecheck/create_custom_int64_d6aa42c9/metadata/v2.metadata.json",
+        "describe": [
+          {
+            "column_name": "id",
+            "column_type": "BIGINT",
+            "null": "YES",
+            "key": null,
+            "default": null,
+            "extra": null
+          },
+          {
+            "column_name": "event_date",
+            "column_type": "BIGINT",
+            "null": "YES",
+            "key": null,
+            "default": null,
+            "extra": null
+          }
+        ],
+        "rows": [
+          {
+            "id": 1,
+            "event_date": 19792
+          },
+          {
+            "id": 2,
+            "event_date": 0
+          }
+        ],
+        "schema_fields": [
+          {
+            "id": 1,
+            "name": "id",
+            "required": true,
+            "type": "long"
+          },
+          {
+            "id": 2,
+            "name": "event_date",
+            "required": true,
+            "type": "long"
+          }
+        ]
+      },
+      "worker_stdout": "",
+      "worker_stderr": "WARNING:root:crcmod package not found. This package is required if python-snappy or google-crc32c are not installed. To ensure crcmod is installed, install the tfrecord extra: pip install apache-beam[tfrecord]\nWARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nE0000 00:00:1773125536.058581 51393711 tcp_posix.cc:595] recvmsg encountered uncommon error: Message too long\nWARNING:root:severity: WARN\ntimestamp {\n  seconds: 1773125537\n  nanos: 31000000\n}\nmessage: \"Unable to load native-hadoop library for your platform... using builtin-java classes where applicable\"\ninstruction_id: \"bundle_3\"\ntransform_id: \"IcebergWrite/beam:transform:managed:v1/IcebergWriteSchemaTransformProvider.IcebergWriteSchemaTransform/IcebergIO.WriteRows/Write Rows to Destinations/Fast-path write rows/ParMultiDo(WriteUngroupedRowsToFiles)\"\nlog_location: \"org.apache.hadoop.util.NativeCodeLoader\"\nthread: \"45\"\n\n",
+      "worker_exit_code": 0
+    },
+    {
+      "mode": "create",
+      "variant": "custom_int32",
+      "table": "datecheck.create_custom_int32_f71b25a5",
+      "ok": true,
+      "inspection": {
+        "table_dir": "/Users/johanesalxd/Developer/git/beam-iceberg-date/artifacts/warehouse/datecheck/create_custom_int32_f71b25a5",
+        "metadata_json": "/Users/johanesalxd/Developer/git/beam-iceberg-date/artifacts/warehouse/datecheck/create_custom_int32_f71b25a5/metadata/v2.metadata.json",
+        "describe": [
+          {
+            "column_name": "id",
+            "column_type": "BIGINT",
+            "null": "YES",
+            "key": null,
+            "default": null,
+            "extra": null
+          },
+          {
+            "column_name": "event_date",
+            "column_type": "INTEGER",
+            "null": "YES",
+            "key": null,
+            "default": null,
+            "extra": null
+          }
+        ],
+        "rows": [
+          {
+            "id": 1,
+            "event_date": 19792
+          },
+          {
+            "id": 2,
+            "event_date": 0
+          }
+        ],
+        "schema_fields": [
+          {
+            "id": 1,
+            "name": "id",
+            "required": true,
+            "type": "long"
+          },
+          {
+            "id": 2,
+            "name": "event_date",
+            "required": true,
+            "type": "int"
+          }
+        ]
+      },
+      "worker_stdout": "",
+      "worker_stderr": "WARNING:root:crcmod package not found. This package is required if python-snappy or google-crc32c are not installed. To ensure crcmod is installed, install the tfrecord extra: pip install apache-beam[tfrecord]\nWARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nE0000 00:00:1773125548.800898 51394289 tcp_posix.cc:595] recvmsg encountered uncommon error: Message too long\nWARNING:root:severity: WARN\ntimestamp {\n  seconds: 1773125549\n  nanos: 735000000\n}\nmessage: \"Unable to load native-hadoop library for your platform... using builtin-java classes where applicable\"\ninstruction_id: \"bundle_3\"\ntransform_id: \"IcebergWrite/beam:transform:managed:v1/IcebergWriteSchemaTransformProvider.IcebergWriteSchemaTransform/IcebergIO.WriteRows/Write Rows to Destinations/Fast-path write rows/ParMultiDo(WriteUngroupedRowsToFiles)\"\nlog_location: \"org.apache.hadoop.util.NativeCodeLoader\"\nthread: \"45\"\n\n",
+      "worker_exit_code": 0
+    },
+    {
+      "mode": "create",
+      "variant": "raw_date",
+      "table": "datecheck.create_raw_date_024f6427",
+      "ok": true,
+      "inspection": {
+        "table_dir": "/Users/johanesalxd/Developer/git/beam-iceberg-date/artifacts/warehouse/datecheck/create_raw_date_024f6427",
+        "metadata_json": "/Users/johanesalxd/Developer/git/beam-iceberg-date/artifacts/warehouse/datecheck/create_raw_date_024f6427/metadata/v2.metadata.json",
+        "describe": [
+          {
+            "column_name": "id",
+            "column_type": "BIGINT",
+            "null": "YES",
+            "key": null,
+            "default": null,
+            "extra": null
+          },
+          {
+            "column_name": "event_date",
+            "column_type": "TIMESTAMP WITH TIME ZONE",
+            "null": "YES",
+            "key": null,
+            "default": null,
+            "extra": null
+          }
+        ],
+        "rows": [
+          {
+            "id": 1,
+            "event_date": "2024-03-10 08:00:00+08"
+          },
+          {
+            "id": 2,
+            "event_date": "1970-01-01 07:30:00+07:30"
+          }
+        ],
+        "schema_fields": [
+          {
+            "id": 1,
+            "name": "id",
+            "required": true,
+            "type": "long"
+          },
+          {
+            "id": 2,
+            "name": "event_date",
+            "required": true,
+            "type": "timestamptz"
+          }
+        ]
+      },
+      "worker_stdout": "",
+      "worker_stderr": "WARNING:root:crcmod package not found. This package is required if python-snappy or google-crc32c are not installed. To ensure crcmod is installed, install the tfrecord extra: pip install apache-beam[tfrecord]\nWARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nE0000 00:00:1773125561.626695 51394856 tcp_posix.cc:595] recvmsg encountered uncommon error: Message too long\nWARNING:root:severity: WARN\ntimestamp {\n  seconds: 1773125562\n  nanos: 345000000\n}\nmessage: \"Unable to load native-hadoop library for your platform... using builtin-java classes where applicable\"\ninstruction_id: \"bundle_3\"\ntransform_id: \"IcebergWrite/beam:transform:managed:v1/IcebergWriteSchemaTransformProvider.IcebergWriteSchemaTransform/IcebergIO.WriteRows/Write Rows to Destinations/Fast-path write rows/ParMultiDo(WriteUngroupedRowsToFiles)\"\nlog_location: \"org.apache.hadoop.util.NativeCodeLoader\"\nthread: \"45\"\n\n",
+      "worker_exit_code": 0
+    },
+    {
+      "mode": "create",
+      "variant": "raw_string",
+      "table": "datecheck.create_raw_string_0e40ad9a",
+      "ok": true,
+      "inspection": {
+        "table_dir": "/Users/johanesalxd/Developer/git/beam-iceberg-date/artifacts/warehouse/datecheck/create_raw_string_0e40ad9a",
+        "metadata_json": "/Users/johanesalxd/Developer/git/beam-iceberg-date/artifacts/warehouse/datecheck/create_raw_string_0e40ad9a/metadata/v2.metadata.json",
+        "describe": [
+          {
+            "column_name": "id",
+            "column_type": "BIGINT",
+            "null": "YES",
+            "key": null,
+            "default": null,
+            "extra": null
+          },
+          {
+            "column_name": "event_date",
+            "column_type": "VARCHAR",
+            "null": "YES",
+            "key": null,
+            "default": null,
+            "extra": null
+          }
+        ],
+        "rows": [
+          {
+            "id": 1,
+            "event_date": "2024-03-10"
+          },
+          {
+            "id": 2,
+            "event_date": "1970-01-01"
+          }
+        ],
+        "schema_fields": [
+          {
+            "id": 1,
+            "name": "id",
+            "required": true,
+            "type": "long"
+          },
+          {
+            "id": 2,
+            "name": "event_date",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      },
+      "worker_stdout": "",
+      "worker_stderr": "WARNING:root:crcmod package not found. This package is required if python-snappy or google-crc32c are not installed. To ensure crcmod is installed, install the tfrecord extra: pip install apache-beam[tfrecord]\nWARNING:root:severity: WARN\ntimestamp {\n  seconds: 1773125574\n  nanos: 950000000\n}\nmessage: \"Unable to load native-hadoop library for your platform... using builtin-java classes where applicable\"\ninstruction_id: \"bundle_3\"\ntransform_id: \"IcebergWrite/beam:transform:managed:v1/IcebergWriteSchemaTransformProvider.IcebergWriteSchemaTransform/IcebergIO.WriteRows/Write Rows to Destinations/Fast-path write rows/ParMultiDo(WriteUngroupedRowsToFiles)\"\nlog_location: \"org.apache.hadoop.util.NativeCodeLoader\"\nthread: \"45\"\n\n",
+      "worker_exit_code": 0
+    },
+    {
+      "mode": "create",
+      "variant": "raw_int_days",
+      "table": "datecheck.create_raw_int_days_1fdd2727",
+      "ok": true,
+      "inspection": {
+        "table_dir": "/Users/johanesalxd/Developer/git/beam-iceberg-date/artifacts/warehouse/datecheck/create_raw_int_days_1fdd2727",
+        "metadata_json": "/Users/johanesalxd/Developer/git/beam-iceberg-date/artifacts/warehouse/datecheck/create_raw_int_days_1fdd2727/metadata/v2.metadata.json",
+        "describe": [
+          {
+            "column_name": "id",
+            "column_type": "BIGINT",
+            "null": "YES",
+            "key": null,
+            "default": null,
+            "extra": null
+          },
+          {
+            "column_name": "event_date",
+            "column_type": "BIGINT",
+            "null": "YES",
+            "key": null,
+            "default": null,
+            "extra": null
+          }
+        ],
+        "rows": [
+          {
+            "id": 1,
+            "event_date": 19792
+          },
+          {
+            "id": 2,
+            "event_date": 0
+          }
+        ],
+        "schema_fields": [
+          {
+            "id": 1,
+            "name": "id",
+            "required": true,
+            "type": "long"
+          },
+          {
+            "id": 2,
+            "name": "event_date",
+            "required": true,
+            "type": "long"
+          }
+        ]
+      },
+      "worker_stdout": "",
+      "worker_stderr": "WARNING:root:crcmod package not found. This package is required if python-snappy or google-crc32c are not installed. To ensure crcmod is installed, install the tfrecord extra: pip install apache-beam[tfrecord]\nWARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nE0000 00:00:1773125586.284342 51396046 tcp_posix.cc:595] recvmsg encountered uncommon error: Message too long\nWARNING:root:severity: WARN\ntimestamp {\n  seconds: 1773125587\n  nanos: 468000000\n}\nmessage: \"Unable to load native-hadoop library for your platform... using builtin-java classes where applicable\"\ninstruction_id: \"bundle_3\"\ntransform_id: \"IcebergWrite/beam:transform:managed:v1/IcebergWriteSchemaTransformProvider.IcebergWriteSchemaTransform/IcebergIO.WriteRows/Write Rows to Destinations/Fast-path write rows/ParMultiDo(WriteUngroupedRowsToFiles)\"\nlog_location: \"org.apache.hadoop.util.NativeCodeLoader\"\nthread: \"45\"\n\n",
+      "worker_exit_code": 0
+    }
+  ],
+  "append_results": [],
+  "canonical_date_table": null
+}
