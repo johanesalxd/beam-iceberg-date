@@ -1,0 +1,8 @@
+[project]
+name = "beam-iceberg-date"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "apache-beam>=2.70.0",
+]
