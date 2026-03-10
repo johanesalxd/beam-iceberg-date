@@ -2,7 +2,13 @@
 __pycache__/
 *.pyc
 .python-version
+*.class
 artifacts/runs/
+artifacts/warehouse/
 tmp_smoke/
 tmp_smoke_j21/
 tmp_pyiceberg_sql/
+tmp_java_hadoop/
+tmp_managedio/
+tmp_java_create/cp.txt
+tmp_java_create/create_date_table.jsh
