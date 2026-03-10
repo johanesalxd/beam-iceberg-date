@@ -1,0 +1,2 @@
+local/beam/DescribeSchemaTransform.class
+local/beam/DateFieldCastTransform.class

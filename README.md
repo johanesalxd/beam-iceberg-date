@@ -4,273 +4,223 @@ This repository documents a reproducible local investigation into a customer-rep
 
 > **Apache Beam Python cannot write date-like values into an Iceberg `DATE` column correctly.**
 
-The goal of this document is to help another engineer or customer:
+This README is now organized in two layers:
+
+1. **Current recommended path** — the most promising solution we have validated so far
+2. **Historical investigation trail** — what we tried earlier, what failed, and why
+
+The goal is to help another engineer or customer:
 
 - understand the problem quickly,
-- see exactly what was tested,
-- reproduce the same tests locally,
-- understand what works vs what fails,
-- choose a practical workaround.
+- see what has already been tested,
+- reproduce the same steps locally,
+- understand the most promising direction,
+- avoid repeating dead ends.
 
 ---
 
 ## TL;DR
 
-### Customer complaint
+### Problem
 
-> A Beam Python pipeline cannot write a Python date value into an Iceberg `DATE` column.
+Beam Python does **not** successfully write Iceberg `DATE` from the tested Python-side representations:
 
-### Final conclusion
+- `datetime.date`
+- ISO string like `"2024-03-10"`
+- epoch-day integer
+- custom Python logical type using `beam:logical_type:date:v1`
 
-**The complaint is legitimate in the tested local environment.**
+This was true for:
 
-We tested both:
+1. fresh table creation, and
+2. append into an existing real Iceberg `DATE` table.
 
-1. **Fresh table creation** through Beam Python -> Iceberg
-2. **Append into an already-existing Iceberg `DATE` table**
+### Most promising solution found so far
 
-Across all tested Python-side representations, Beam Python did **not** successfully write an Iceberg `DATE` value.
+The strongest new result in this repo is:
 
-### What failed
+> **A tiny Java cross-language transform can successfully run and emit selected row fields as true Beam portable DATE logical types at runtime.**
 
-#### Fresh table creation
-
-| Python input | What Beam/Iceberg created instead |
-|---|---|
-| `datetime.date` | `timestamptz` |
-| ISO string like `"2024-03-10"` | `string` |
-| epoch-day integer | `long` |
-| custom logical type `beam:logical_type:date:v1` (INT64) | `long` |
-| custom logical type `beam:logical_type:date:v1` (INT32) | `int` |
-
-#### Append into an existing Iceberg `DATE` table
-
-| Python input | Result |
-|---|---|
-| ISO string | **FAIL** — `String cannot be cast to LocalDate` |
-| `datetime.date` | **FAIL** — `Instant cannot be cast to LocalDate` |
-| custom logical type `beam:logical_type:date:v1` | **FAIL** — `Long cannot be cast to LocalDate` |
-
-### Managed IO result
-
-We also tested **Managed IO** to verify whether the higher-level wrapper changes the outcome.
-
-**It does not.**
-
-- Managed IO fresh create with string input creates **`VARCHAR`**, not `DATE`
-- Managed IO append into an existing `DATE` table fails with the same core type mismatch
-
-### Practical takeaway
-
-If you need a reliable production workaround today, the safest options are:
-
-1. **Use Java Beam for the Iceberg DATE write step**, or
-2. **Write `STRING` or `BIGINT` from Python and convert downstream**
-
----
-
-## Problem Background
-
-The most likely upstream clue is Apache Beam issue **#25946**:
-
-- https://github.com/apache/beam/issues/25946
-
-That issue notes that the Python SDK is missing portable schema logical types such as:
-
-- `Date`
-- `Time`
-- `DateTime`
-
-At first glance, this makes the bug report plausible:
-
-- Beam Java understands portable logical types for date/time values
-- Iceberg expects Beam `SqlTypes.DATE -> Iceberg DATE`
-- Python Beam may not be able to express that type correctly
-
-That led to the initial hypothesis:
-
-> Maybe the problem can be fixed by creating a custom Python logical type for `datetime.date`.
-
-We tested that hypothesis end-to-end. It was **not enough**.
-
----
-
-## Scope of What Was Tested
-
-We tested the following Python-side representations:
-
-1. `datetime.date`
-2. ISO string, e.g. `"2024-03-10"`
-3. epoch-day integer, e.g. `20522`
-4. custom portable logical type using URN `beam:logical_type:date:v1` with:
-   - INT64 representation
-   - INT32 representation
-
-We tested them in two different scenarios:
-
-### Scenario A — Fresh table creation
-
-Beam creates the Iceberg table based on the Python-side schema.
-
-### Scenario B — Append into an existing real Iceberg `DATE` table
-
-The Iceberg table was pre-created outside Beam using the Java Iceberg API with schema:
-
-- `id BIGINT`
-- `event_date DATE`
-
-This second scenario matters because it answers the practical question:
-
-> Even if Beam cannot create the correct schema, can it still write into a real DATE table that already exists?
-
-In our tests, the answer was **no**.
-
----
-
-## Important Design Choices in This Investigation
-
-### Why DuckDB was used for verification, not as the primary table authority
-
-DuckDB was used to:
-
-- inspect Iceberg metadata,
-- verify final column types,
-- read the resulting tables back.
-
-That was useful because it gives us a second system to confirm what Beam actually wrote.
-
-However, for the authoritative append test, we did **not** rely on DuckDB to create the canonical DATE table.
-
-Reason:
-
-- Beam writes through the Java Iceberg + Hadoop catalog path
-- if DuckDB created the table and Beam failed against it, there would be ambiguity about whether the failure came from:
-  - Beam Python,
-  - Java Iceberg,
-  - or a catalog compatibility difference
-
-So the real DATE table was created using Java Iceberg itself.
-
-That gave us a much stronger control case.
-
-### Why Managed IO was tested separately
-
-Beam Python has a higher-level Managed IO wrapper for Iceberg.
-
-We tested it to answer a simple question:
-
-> Does the wrapper fix the problem?
-
-It does **not**.
-
-Managed IO still hits the same underlying Java Iceberg write path, so the behavior is materially the same.
-
----
-
-## Exact Findings
-
-## 1. Fresh Table Creation Results
-
-This section answers:
-
-> If Beam Python creates the table, what Iceberg type does it actually create?
-
-| Python input | Resulting Iceberg type | Outcome |
-|---|---|---|
-| `datetime.date` | `timestamptz` | write succeeds, wrong type |
-| ISO `str` | `string` | write succeeds, wrong type |
-| epoch-day `int` | `long` | write succeeds, wrong type |
-| custom logical type `beam:logical_type:date:v1` with INT64 | `long` | write succeeds, wrong type |
-| custom logical type `beam:logical_type:date:v1` with INT32 | `int` | write succeeds, wrong type |
-
-### Conclusion from fresh-create tests
-
-**Beam Python did not create an Iceberg `DATE` column in any tested case.**
-
-Even the custom logical type path did not materialize as Iceberg `DATE`.
-
----
-
-## 2. Append Into Existing Iceberg DATE Table
-
-This section answers:
-
-> If the table already exists with a real `DATE` column, can Beam Python write into it?
-
-The table was pre-created with Java Iceberg and verified via DuckDB as:
-
-- `id BIGINT`
-- `event_date DATE`
-
-### Append results
-
-| Python input | Result |
-|---|---|
-| ISO `str` | **FAIL** — `java.lang.String cannot be cast to java.time.LocalDate` |
-| `datetime.date` | **FAIL** — `org.joda.time.Instant cannot be cast to java.time.LocalDate` |
-| custom logical type `beam:logical_type:date:v1` | **FAIL** — `java.lang.Long cannot be cast to java.time.LocalDate` |
-
-### Conclusion from append tests
-
-**Beam Python did not successfully append any tested representation into an existing Iceberg `DATE` column.**
-
-This is the strongest evidence in the repo, because the table schema is known-good and independently verified.
-
----
-
-## 3. Managed IO Result
-
-Managed IO was tested as a separate check.
-
-### Fresh create via Managed IO
-
-- string input successfully writes
-- resulting Iceberg type is **`VARCHAR`**, not `DATE`
-
-### Append via Managed IO into existing `DATE` table
-
-- fails with the same essential error as the lower-level path:
+That means the best path forward is likely:
 
 ```text
-String cannot be cast to LocalDate
+Python rows
+-> Java cross-language cast transform
+-> output row with DATE logical type
+-> Iceberg write
 ```
 
-### Conclusion
+This is important because it avoids a full Java pipeline migration.
 
-**Managed IO does not fix the issue.**
+### What is already proven
 
-It is a different wrapper around the same underlying behavior.
+We have successfully verified Phases 1–4 of that approach:
 
----
+- Java transform builds successfully
+- Python can invoke it through Beam cross-language transform support
+- it runs at runtime (not just expansion time)
+- its output schema contains:
+  - `LOGICAL_TYPE<beam:logical_type:date:v1>`
 
-## Why the Custom Logical Type Did Not Solve It
+### What is not yet proven in this README
 
-One of the main goals of this repo was to test whether a custom Python logical type could bridge the gap.
+We have **not yet** completed the next phase in this branch:
 
-We verified that Python can successfully express a custom logical type with:
+- feeding the Java-cast output into Iceberg and verifying end-to-end success
 
-- URN: `beam:logical_type:date:v1`
-- epoch-day representation
-- portable schema metadata
-
-That part is covered by `beam_date_test.py`.
-
-However, end-to-end results show that this still does **not** become a true Iceberg `DATE` in the tested Beam Python -> Java Iceberg write path.
-
-So the custom class is useful as a Python-side experiment, but **it is not a working production fix here**.
+That is the next logical step after this document.
 
 ---
 
-## Reproducing the Investigation Locally
+## Current Best Path: Tiny Java Cross-Language DATE Cast Transform
+
+## Why this is now the primary direction
+
+The early Python-only attempts showed that Beam Python could not reliably produce Iceberg `DATE`.
+
+But that did **not** mean Java was broken.
+
+In fact, the evidence increasingly pointed to a more specific problem:
+
+> The broken part is the **Python -> Java type boundary**, not necessarily Java Beam or Iceberg itself.
+
+That led to the idea of a **small Java transform** that sits between Python and Iceberg.
+
+Instead of trying to make Python magically produce the exact Java-side date object Iceberg wants, we explicitly insert a Java cast layer:
+
+```text
+Python strings or epoch-day values
+-> Java transform converts them to Beam DATE fields
+-> downstream sink sees real DATE logical types
+```
+
+This is much smaller in scope than migrating the whole pipeline to Java.
+
+---
+
+## What was built
+
+A small Java cross-language module was added under:
+
+```text
+xlang-date-cast/
+```
+
+It contains:
+
+### `local.beam.DateFieldCastTransform`
+
+This transform:
+
+- accepts Beam rows from Python
+- rewrites selected fields into Beam `SqlTypes.DATE`
+- supports source values for those target date fields as:
+  - ISO string like `"2026-03-10"`
+  - epoch-day integer / long
+  - `LocalDate` passthrough
+
+### `local.beam.DescribeSchemaTransform`
+
+A small helper transform used to inspect the Java-side Beam schema after casting.
+
+This was used to verify that the transformed output really contains DATE logical types.
+
+---
+
+## What was verified
+
+We completed the first 4 phases of this approach.
+
+### Phase 1 — Contract design
+
+Chosen initial contract:
+
+**Input from Python:**
+- `id: BIGINT`
+- `name: STRING`
+- `start_date: STRING`
+- `end_date: STRING`
+
+**Java transform config:**
+- `date_fields = ["start_date", "end_date"]`
+
+**Expected output:**
+- same row shape
+- same non-date columns
+- selected date fields converted to Beam DATE logical types
+
+### Phase 2 — Java transform build
+
+The Java module was compiled successfully with Java 21.
+
+### Phase 3 — Python invocation
+
+Python successfully invoked the Java transform using Beam cross-language transform support.
+
+### Phase 4 — Runtime schema verification
+
+This is the most important milestone so far.
+
+The Java transform was executed **at runtime**, and the output schema was written to disk.
+
+The runtime output schema was:
+
+```text
+SCHEMA_START
+id | INT64 NOT NULL
+name | STRING NOT NULL
+start_date | LOGICAL_TYPE<beam:logical_type:date:v1> NOT NULL
+end_date | LOGICAL_TYPE<beam:logical_type:date:v1> NOT NULL
+SCHEMA_END
+```
+
+### What this proves
+
+It proves that:
+
+- the tiny Java transform approach is not just theoretical
+- Beam cross-language execution works for this use case
+- selected fields can be converted into true Beam portable DATE logical types before the Iceberg sink
+
+This is the strongest positive result currently in the repo.
+
+---
+
+## Why this matters
+
+The earlier negative results told us what does **not** work.
+
+This new positive result tells us what **might** work next.
+
+That changes the engineering recommendation significantly.
+
+### Before this result
+
+The best recommendations were:
+
+1. migrate the sink step to Java, or
+2. stage as STRING/BIGINT and convert later
+
+### After this result
+
+We now have a narrower and more attractive option:
+
+> Keep the pipeline mostly in Python, and introduce a tiny Java cross-language DATE cast transform immediately before the Iceberg sink.
+
+This is currently the most promising architecture.
+
+---
+
+## How to reproduce the current best-path verification
 
 ## Prerequisites
 
-Working local stack used for all meaningful validation:
+Working local stack used for the successful runtime verification:
 
 - `uv`
 - Apache Beam `2.70.0`
-- DuckDB `v1.4.4` with Iceberg extension
-- **Java 21.0.2 via mise**
+- Java `21.0.2` via mise
+- Docker Desktop / Docker engine running
 
 ### Verify Java
 
@@ -278,125 +228,223 @@ Working local stack used for all meaningful validation:
 mise exec java@21 -- java -version
 ```
 
----
-
-## Step 1 — Python-side logical type test
-
-Run:
+### Verify Docker
 
 ```bash
-uv run python beam_date_test.py
+docker version
 ```
 
-What this proves:
+---
 
-- the custom logical type is syntactically valid in Python
-- the logical type can be registered
-- the schema metadata can be generated
-- a DirectRunner pipeline can carry the values
+## Build the Java transform
 
-What this does **not** prove:
+From the repo root:
 
-- successful Iceberg DATE writes
+```bash
+cd xlang-date-cast
+mise exec java@21 -- mvn -q package
+```
+
+This produces the jar used by the Python-side verification.
 
 ---
 
-## Step 2 — End-to-end create-path matrix
+## Run the cross-language verification
 
-Run:
+From the repo root:
 
 ```bash
-mise exec java@21 -- uv run python beam_iceberg_matrix.py
+mise exec java@21 -- uv run python xlang_date_cast_verify.py
 ```
 
 This script:
 
-- writes multiple Python-side variants through Beam Python -> Iceberg
-- reads the results back with DuckDB
-- records summary output in:
+1. creates sample input rows in Python
+2. sends them into the Java date cast transform
+3. runs the Java schema description transform
+4. writes the result under:
 
 ```text
-artifacts/matrix_summary.json
+artifacts/xlang_schema_verify/
 ```
+
+### Expected output
+
+The schema text file should contain something like:
+
+```text
+SCHEMA_START
+id | INT64 NOT NULL
+name | STRING NOT NULL
+start_date | LOGICAL_TYPE<beam:logical_type:date:v1> NOT NULL
+end_date | LOGICAL_TYPE<beam:logical_type:date:v1> NOT NULL
+SCHEMA_END
+```
+
+If you see that, you have reproduced the successful Phase 4 result.
 
 ---
 
-## Step 3 — Existing DATE-table append test
+## Recommended next step after this README
 
-The repo also includes a tiny Java helper used during the investigation:
+The next technical step is straightforward:
 
-- `tmp_java_create/CreateDateTable.java`
-- `tmp_java_create/pom.xml`
+### Phase 5
+Take the Java-cast output and connect it to Iceberg write.
 
-This helper creates a real local Iceberg table with:
+That should be tested in two modes:
+
+1. **Fresh table creation**
+2. **Append into existing Iceberg DATE table**
+
+That will determine whether this Java cast layer is only schema-correct, or whether it is the real production fix.
+
+---
+
+## Historical Results: What We Tried Before This
+
+This section is intentionally preserved so that others can understand why the Java cast transform became the primary direction.
+
+## 1. Python-only path: fresh table creation
+
+We tested the following Python-side representations:
+
+- `datetime.date`
+- ISO string like `"2024-03-10"`
+- epoch-day integer
+- custom Python logical type using `beam:logical_type:date:v1` with INT64 base representation
+- same custom type with INT32 representation
+
+### Results
+
+| Python input | Resulting Iceberg type |
+|---|---|
+| `datetime.date` | `timestamptz` |
+| ISO `str` | `string` |
+| epoch-day `int` | `long` |
+| custom logical type (`beam:logical_type:date:v1`, INT64) | `long` |
+| custom logical type (`beam:logical_type:date:v1`, INT32) | `int` |
+
+### Conclusion
+
+Beam Python did **not** create an Iceberg `DATE` column in any tested case.
+
+---
+
+## 2. Python-only path: append into existing Iceberg DATE table
+
+A real Iceberg table was pre-created using Java Iceberg with schema:
 
 - `id BIGINT`
 - `event_date DATE`
 
-That table was then used as the target for Beam Python append tests.
+DuckDB verified the resulting schema.
 
-This is the key test if you want to answer:
+### Results
 
-> Can Beam Python write into a real DATE table that already exists?
+| Python input | Result |
+|---|---|
+| ISO `str` | **FAIL** — `String cannot be cast to LocalDate` |
+| `datetime.date` | **FAIL** — `Instant cannot be cast to LocalDate` |
+| custom logical type (`beam:logical_type:date:v1`) | **FAIL** — `Long cannot be cast to LocalDate` |
 
-In our local runs, the answer was **no**.
+### Conclusion
+
+Beam Python did **not** successfully append any tested representation into an existing Iceberg `DATE` column.
 
 ---
 
-## What We Recommend to Customers
+## 3. Managed IO result
 
-Given the tested behavior, these are the practical options.
+Managed IO was tested to confirm whether the higher-level wrapper changes anything.
 
-### Option 1 — Use Java Beam for the final Iceberg DATE write
+### Fresh create via Managed IO
 
-This is the cleanest technical fix if native Iceberg `DATE` is required.
+- string input succeeds
+- resulting Iceberg type is **`VARCHAR`**, not `DATE`
 
-Why:
+### Append via Managed IO into existing DATE table
 
-- Beam Java has native logical type support for DATE
-- avoids the Python-side logical type compatibility gap
+- fails with the same essential error:
 
-### Option 2 — Write `STRING` or `BIGINT` from Python, convert downstream
+```text
+String cannot be cast to LocalDate
+```
+
+### Conclusion
+
+Managed IO does **not** fix the problem.
+
+It is a different wrapper over the same underlying behavior.
+
+---
+
+## 4. Why the custom Python logical type was not enough
+
+We verified that Python can express a custom logical type with:
+
+- URN: `beam:logical_type:date:v1`
+- epoch-day representation
+- portable schema metadata
+
+That is what `beam_date_test.py` demonstrates.
+
+However, end-to-end testing showed that this still does **not** become a real Iceberg DATE through the tested Python -> Java Iceberg write path.
+
+So the custom class was a useful experiment, but **not a complete solution**.
+
+---
+
+## Current Recommendation
+
+If you are trying to solve this problem today, the recommendation order is now:
+
+### 1. Best current direction
+**Python pipeline + tiny Java cross-language DATE cast transform + Iceberg write**
+
+This is the most promising path validated so far.
+
+### 2. Safe fallback if you need an immediate workaround
+**Write `STRING` or `BIGINT` from Python and convert downstream**
 
 Examples:
 
 - write `"2024-03-10"` as `STRING`
-- or write epoch-day as `BIGINT`
-- cast to `DATE` in a later step
+- write epoch-day as `BIGINT`
+- materialize final Iceberg `DATE` in a downstream step
 
-This is the simplest operational workaround if the pipeline must stay in Python.
+### 3. Broader alternative
+**Use Java Beam for the final Iceberg DATE write step**
 
-### Option 3 — Split the pipeline into staging + materialization
-
-Pattern:
-
-```text
-Python Beam -> staging data (STRING or BIGINT date field)
-           -> downstream transform / materialization job
-           -> final Iceberg DATE table
-```
-
-This is often the most practical compromise.
-
-### Option 4 — Raise / track an upstream Beam issue with this evidence
-
-This repo now contains enough evidence for a useful upstream bug report or follow-up against Beam issue #25946.
+This remains a clean option if you want to avoid the Python-side compatibility issue entirely.
 
 ---
 
-## Files in This Repo
+## Repo Contents
 
 ### `beam_date_test.py`
-Python-side logical-type validation.
+Python-side logical type validation.
 
 ### `beam_iceberg_matrix.py`
-End-to-end local matrix for Beam -> Iceberg -> DuckDB.
+Earlier end-to-end local matrix for Beam -> Iceberg -> DuckDB.
+Primarily useful now as historical evidence of what failed on the Python-only path.
+
+### `xlang-date-cast/`
+Java cross-language DATE cast module.
+This is now the most important implementation artifact in the repo.
+
+### `xlang_date_cast_verify.py`
+Python-side verification script for the Java cross-language DATE cast transform.
+This is the key script for reproducing the current best-path result.
 
 ### `artifacts/matrix_summary.json`
-Machine-readable summary of the most recent matrix run.
+Machine-readable summary of the earlier Python-only matrix results.
+
+### `artifacts/xlang_schema_verify/`
+Output from the Java cross-language schema verification run.
 
 ### `tmp_java_create/`
-Java helper used to create a canonical local Iceberg `DATE` table.
+Java helper used to create a canonical local Iceberg DATE table during the earlier investigation.
 
 ---
 
@@ -412,4 +460,4 @@ Java helper used to create a canonical local Iceberg `DATE` table.
 
 ## Final Takeaway
 
-**In the tested local environment, Beam Python date-like values do not successfully map to Iceberg `DATE`, either when creating the table or when appending into an existing `DATE` column.**
+**The Python-only Beam -> Iceberg DATE path appears broken in the tested environment. The most promising solution currently validated is a tiny Java cross-language transform that converts selected fields into true Beam DATE logical types before the Iceberg sink.**
