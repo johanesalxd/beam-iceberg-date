@@ -5,6 +5,8 @@ __pycache__/
 *.class
 artifacts/runs/
 artifacts/warehouse/
+artifacts/xlang_schema_verify/
+artifacts/xlang_to_iceberg/
 tmp_smoke/
 tmp_smoke_j21/
 tmp_pyiceberg_sql/
