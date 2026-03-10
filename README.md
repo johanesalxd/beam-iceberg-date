@@ -166,6 +166,7 @@ Validated environment used for the successful runs:
 - `uv`
 - Apache Beam `2.70.0`
 - Java `21.0.2` via mise
+- Maven (`mvn`)
 - Docker Desktop / Docker engine running
 - DuckDB with Iceberg extension available for verification
 
@@ -301,13 +302,38 @@ Expected result includes rows like:
 
 ## Step 4 — Verify append into existing DATE table
 
+This step requires a pre-created local Iceberg table with real DATE columns.
+
+The repo includes a tiny Java helper for that under:
+
+- `tmp_java_create/`
+
+### 4a. Create the canonical DATE table
+
 Run:
+
+```bash
+cd tmp_java_create
+mise exec java@21 -- mvn -q dependency:build-classpath -Dmdep.outputFile=cp.txt
+CP=$(cat cp.txt):.
+mise exec java@21 -- javac -cp "$CP" CreateDateTable.java
+rm -rf ../tmp_java_hadoop && mkdir -p ../tmp_java_hadoop/warehouse
+mise exec java@21 -- java -cp "$CP" CreateDateTable file:///$(cd ../tmp_java_hadoop/warehouse && pwd) datecheck existing_date_tbl
+cd ..
+```
+
+Expected schema from the helper:
+
+- `id BIGINT`
+- `name VARCHAR`
+- `start_date DATE`
+- `end_date DATE`
+
+### 4b. Run the append verification
 
 ```bash
 mise exec java@21 -- uv run python xlang_date_to_iceberg_verify.py append
 ```
-
-This test appends rows into the pre-created local Iceberg DATE table used during validation.
 
 Expected result:
 
@@ -325,6 +351,13 @@ Expected appended rows:
 10 | alpha | 2026-03-10 | 2026-03-11
 11 | beta  | 1970-01-01 | 1970-01-02
 ```
+
+and the schema should remain:
+
+- `id BIGINT`
+- `name VARCHAR`
+- `start_date DATE`
+- `end_date DATE`
 
 ---
 

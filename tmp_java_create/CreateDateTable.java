@@ -17,7 +17,9 @@ public class CreateDateTable {
 
     Schema schema = new Schema(
       Types.NestedField.required(1, "id", Types.LongType.get()),
-      Types.NestedField.required(2, "event_date", Types.DateType.get())
+      Types.NestedField.required(2, "name", Types.StringType.get()),
+      Types.NestedField.required(3, "start_date", Types.DateType.get()),
+      Types.NestedField.required(4, "end_date", Types.DateType.get())
     );
 
     Configuration conf = new Configuration();
