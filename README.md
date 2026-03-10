@@ -210,7 +210,38 @@ xlang-date-cast/target/xlang-date-cast-1.0-SNAPSHOT.jar
 
 ---
 
-## Step 2 — Verify the cast transform itself
+## Step 2 — Run the Java unit tests
+
+The Java module now includes small contract tests for the transform itself.
+
+These tests cover the most important accepted and rejected behaviors:
+
+- valid ISO `YYYY-MM-DD` string casting
+- valid epoch-day `INT64` casting
+- null preservation for nullable date fields
+- duplicate configured fields rejected early
+- missing configured fields rejected early
+- blank string rejected with clear error
+- invalid ISO string rejected with clear error
+
+Run from the Java module directory:
+
+```bash
+cd xlang-date-cast
+mise exec java@21 -- mvn -q test
+cd ..
+```
+
+Expected result:
+- Maven exits successfully
+- the contract tests pass
+
+These are **Java-side contract tests**, not end-to-end cross-language integration tests.
+They exist so readers can understand exactly what the Java transform accepts and rejects.
+
+---
+
+## Step 3 — Verify the cast transform itself
 
 Run:
 
@@ -218,7 +249,7 @@ Run:
 mise exec java@21 -- uv run python xlang_date_cast_verify.py
 ```
 
-This test checks only the transform boundary.
+This test checks the cross-language transform boundary.
 
 It proves that:
 
@@ -247,7 +278,7 @@ If you get that, the Java cast transform is working.
 
 ---
 
-## Step 3 — Verify fresh table creation with Iceberg
+## Step 4 — Verify fresh table creation with Iceberg
 
 Run:
 
@@ -389,14 +420,70 @@ You can keep your data pipeline in Python and only use Java for the exact place 
 
 ---
 
+## Supported contract / not supported / failure behavior
+
+This section is the operational contract for the Java cross-language transform.
+
+### Supported
+
+#### Field scope
+- **Top-level row fields only**
+- Explicitly named fields only, for example: `start_date,end_date`
+- Unselected fields pass through unchanged
+
+#### Supported input representations for selected DATE fields
+- **ISO-8601 date string** in exact date form, e.g. `2026-03-10`
+- **Epoch-day integer** as `INT32`
+- **Epoch-day integer** as `INT64`
+- **Java `LocalDate`** passthrough on the Java side
+
+#### Supported downstream behavior proven in this repo
+- Fresh Iceberg table creation with `DATE` columns
+- Append into an existing Iceberg table with `DATE` columns
+- Python pipeline remains the primary pipeline language; Java is only used at the DATE materialization boundary
+
+### Not supported
+- Nested field paths such as `payload.start_date`
+- Arrays / maps / nested row traversal
+- Custom date formats such as `03/10/2026`
+- Timestamp strings such as `2026-03-10T00:00:00Z`
+- Blank strings as date values
+- Treating this transform as a generic logical-type casting framework
+
+### Fail-fast behavior
+The hardened Java transform now fails early for configuration and schema mistakes.
+
+It will error immediately when:
+- no field names are configured
+- duplicate field names are configured
+- a configured field does not exist in the input schema
+- a configured field has an unsupported source schema type
+
+It will error at row-processing time when:
+- a selected field contains a blank string
+- a selected field contains a non-ISO date string
+- a selected field contains an unsupported runtime value type
+
+### Recommended customer-facing input contract
+For the most predictable production behavior, normalize upstream Python date fields into:
+
+- exact **`YYYY-MM-DD`** strings
+
+before they enter the Java transform.
+
+Epoch-day `INT32` / `INT64` inputs are supported by the Java code, but the most heavily validated path in this repo remains the Python string-date -> Java DATE cast -> Iceberg DATE write flow.
+
+---
+
 ## Current limitations / scope
 
-This repo currently proves the path for **selected string fields -> DATE**.
+This repo currently proves the path for **selected top-level fields -> DATE**, with the strongest validation on **string `YYYY-MM-DD` input -> DATE**.
 
 Potential future extensions could include:
 
 - epoch-day input as the primary contract
-- support for nullable fields
+- deeper end-to-end validation of nullable fields
+- nested-field support
 - support for multiple logical types beyond DATE
   - TIME
   - TIMESTAMP

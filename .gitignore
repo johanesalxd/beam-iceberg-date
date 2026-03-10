@@ -14,3 +14,5 @@ tmp_java_hadoop/
 tmp_managedio/
 tmp_java_create/cp.txt
 tmp_java_create/create_date_table.jsh
+xlang-date-cast/target/
+tmp_java_create/target/
